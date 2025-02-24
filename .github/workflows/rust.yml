@@ -104,9 +104,9 @@ jobs:
             echo "Building for $target"
             if [ "$target" = "aarch64-unknown-linux-gnu" ]; then
               CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-              cargo build --release --target $target
+              make build target=$target
             else
-              cargo build --release --target $target
+              make build target=$target
             fi
             
             # Get OS from target
