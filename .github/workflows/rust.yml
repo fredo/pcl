@@ -84,6 +84,12 @@ jobs:
         uses: dtolnay/rust-toolchain@nightly
         with:
           targets: ${{ matrix.targets }}
+      - name: Add Rust targets
+        run: |
+          IFS=',' read -ra TARGET_ARRAY <<< "${{ matrix.targets }}"
+          for target in "${TARGET_ARRAY[@]}"; do
+            rustup target add $target
+          done
       # Install cross-compilation tools on Linux
       - name: Install cross-compilation tools
         if: runner.os == 'Linux'
