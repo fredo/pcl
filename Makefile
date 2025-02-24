@@ -1,6 +1,10 @@
-# Build the binary
+# Build the binary (usage: make build [target=<target-triple>])
 build:
+ifdef target
+	cargo build --verbose --release --target $(target)
+else
 	cargo build --verbose --release
+endif
 
 # Install the binary
 install:

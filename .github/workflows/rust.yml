@@ -113,9 +113,10 @@ jobs:
             os=$(echo $target | cut -d'-' -f2)
             arch=$(echo $target | cut -d'-' -f1)
             
-            # Copy binaries with appropriate names
-            cp target/$target/release/pcl pcl-$arch-$os
-            cp target/$target/release/phorge phorge-$arch-$os
+            # Create directory if it doesn't exist and copy binaries
+            mkdir -p target/$target/release/
+            cp -f target/$target/release/pcl pcl-$arch-$os || true
+            cp -f target/$target/release/phorge phorge-$arch-$os || true
           done
       - name: Create Release
         uses: softprops/action-gh-release@v1
