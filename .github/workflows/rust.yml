@@ -65,9 +65,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            targets: ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+            targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
           - os: macos-latest
-            targets: ["x86_64-apple-darwin", "aarch64-apple-darwin"]
+            targets: x86_64-apple-darwin,aarch64-apple-darwin
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -93,7 +93,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build Release Binaries
         run: |
-          for target in ${{ join(matrix.targets, ' ') }}; do
+          IFS=',' read -ra TARGET_ARRAY <<< "${{ matrix.targets }}"
+          for target in "${TARGET_ARRAY[@]}"; do
             echo "Building for $target"
             if [ "$target" = "aarch64-unknown-linux-gnu" ]; then
               CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
