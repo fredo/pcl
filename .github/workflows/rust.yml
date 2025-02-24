@@ -99,8 +99,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-aarch64-linux-gnu
-          # Enable multiarch support
+          # Enable multiarch support and add arm64 architecture
           sudo dpkg --add-architecture arm64
+          # Add arm64 repository
+          sudo tee /etc/apt/sources.list.d/arm64.list << EOF
+          deb [arch=arm64] http://ports.ubuntu.com/ jammy main restricted
+          deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main restricted
+          EOF
           sudo apt-get update
           # Add OpenSSL dev packages for aarch64
           sudo apt-get install -y libssl-dev pkg-config
