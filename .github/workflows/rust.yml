@@ -55,11 +55,10 @@ jobs:
       - name: Lint
         run: make lint-check
 
-  # TODO: eventually move this to a separate workflow
-  # if: startsWith(github.ref, 'refs/tags/')
   release:
     needs: [fmt, lint]
-    timeout-minutes: 360 # 6 hours
+    if: startsWith(github.ref, 'refs/tags/')
+    timeout-minutes: 60 # 60 minutes
     name: Create Release for ${{ matrix.target }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -90,6 +89,8 @@ jobs:
         with:
           target: ${{ matrix.target }}
           override: true
+      - uses: Swatinem/rust-cache@v2
+
       - name: Build for macOS ARM
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
@@ -112,6 +113,7 @@ jobs:
           # Copy binaries with appropriate names
           cp target/${{ matrix.target }}/release/pcl pcl-$arch-$os
           cp target/${{ matrix.target }}/release/phorge phorge-$arch-$os || true
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
