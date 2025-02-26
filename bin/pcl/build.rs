@@ -61,8 +61,8 @@ pub fn main() -> Result<()> {
 
             let output = String::from_utf8_lossy(&output.stdout);
             for line in output.lines() {
-                if line.starts_with("host: ") {
-                    return line[6..].to_string();
+                if let Some(host) = line.strip_prefix("host: ") {
+                    return host.to_string();
                 }
             }
 
