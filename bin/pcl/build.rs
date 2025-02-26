@@ -20,6 +20,7 @@ pub fn main() -> Result<()> {
     println!("cargo:rerun-if-env-changed=PCL_SKIP_BUILD_PHOUNDRY");
     println!("cargo:rerun-if-env-changed=TARGET");
     println!("cargo:rerun-if-env-changed=OUT_DIR");
+    println!("cargo:rerun-if-env-changed=RUSTFLAGS");
 
     let skip_build_phoundry = env::var("PCL_SKIP_BUILD_PHOUNDRY")
         .map(|val| val.to_lowercase() == "true")
@@ -49,10 +50,28 @@ pub fn main() -> Result<()> {
         update_phoundry(workspace_root).expect("Failed to update phoundry submodule");
     }
 
-    // Build phoundry/forge
-    build_phoundry(workspace_root, &profile).expect("Failed to build phoundry");
+    // Get target - use host target as fallback if not set
+    let target = env::var("TARGET").unwrap_or_else(|_| {
+        env::var("HOST").unwrap_or_else(|_| {
+            // Default to host architecture as last resort
+            let output = Command::new("rustc")
+                .args(["--version", "--verbose"])
+                .output()
+                .expect("Failed to execute rustc");
 
-    let target = env::var("TARGET").ok().unwrap();
+            let output = String::from_utf8_lossy(&output.stdout);
+            for line in output.lines() {
+                if line.starts_with("host: ") {
+                    return line[6..].to_string();
+                }
+            }
+
+            panic!("Could not determine target architecture");
+        })
+    });
+
+    // Build phoundry/forge
+    build_phoundry(workspace_root, &profile, &target).expect("Failed to build phoundry");
 
     let source = workspace_root
         .join("phoundry")
@@ -87,21 +106,25 @@ fn update_phoundry(workspace_root: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-fn build_phoundry(workspace_root: &Path, mode: &str) -> std::io::Result<()> {
+fn build_phoundry(workspace_root: &Path, mode: &str, target: &str) -> std::io::Result<()> {
     let mut command = Command::new("cargo");
     command
         .current_dir(workspace_root.join("phoundry"))
         .arg("build")
         .arg("--bin")
-        .arg("forge");
+        .arg("forge")
+        .arg("--target")
+        .arg(target);
 
     if mode == "release" {
         command.arg("--release");
     }
 
-    if let Ok(target_value) = env::var("TARGET") {
-        command.arg("--target").arg(target_value);
+    // Pass through the current process's RUSTFLAGS without modification
+    if let Ok(rustflags) = env::var("RUSTFLAGS") {
+        command.env("RUSTFLAGS", rustflags);
     }
+
     command.status()?;
     Ok(())
 }

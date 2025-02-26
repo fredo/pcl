@@ -91,19 +91,25 @@ jobs:
           override: true
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build for macOS ARM
-        if: matrix.target == 'aarch64-apple-darwin'
+      # Install dependencies for Linux builds
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
         run: |
-          rustup target add aarch64-apple-darwin
-          cargo build --release --target aarch64-apple-darwin
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
-          # Copy binaries with appropriate names
-          cp target/aarch64-apple-darwin/release/pcl pcl-aarch64-apple
-          cp target/aarch64-apple-darwin/release/phorge phorge-aarch64-apple || true
-
-      - name: Build for other targets
-        if: matrix.target != 'aarch64-apple-darwin' && matrix.target != 'aarch64-unknown-linux-gnu'
+      # Build for all targets with static linking
+      - name: Build Release
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
+          # For aarch64 Linux cross-compilation
+          CC_aarch64_unknown_linux_gnu: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
         run: |
+          # Explicitly add the target to be extra cautious
+          rustup target add ${{ matrix.target }}
+
+          # Build with static linking
           cargo build --release --target ${{ matrix.target }}
 
           # Extract architecture and OS from target
@@ -113,6 +119,25 @@ jobs:
           # Copy binaries with appropriate names
           cp target/${{ matrix.target }}/release/pcl pcl-$arch-$os
           cp target/${{ matrix.target }}/release/phorge phorge-$arch-$os || true
+
+          # Check library dependencies (informational)
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            echo "Library dependencies for pcl:"
+            otool -L pcl-$arch-$os
+            
+            if [[ -f "phorge-$arch-$os" ]]; then
+              echo "Library dependencies for phorge:"
+              otool -L phorge-$arch-$os
+            fi
+          elif [[ "${{ runner.os }}" == "Linux" ]]; then
+            echo "Library dependencies for pcl:"
+            ldd pcl-$arch-$os || echo "No dynamic dependencies (static binary)"
+            
+            if [[ -f "phorge-$arch-$os" ]]; then
+              echo "Library dependencies for phorge:"
+              ldd phorge-$arch-$os || echo "No dynamic dependencies (static binary)"
+            fi
+          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
