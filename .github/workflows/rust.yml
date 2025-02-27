@@ -96,8 +96,12 @@ jobs:
       - name: Install cross
         run: cargo install cross
 
-      # Build for all targets with static linking
+      # Build for all targets
       - name: Build Release
+        env:
+          # For OpenSSL
+          OPENSSL_STATIC: ${{ runner.os == 'Linux' && '1' || '' }}
+          OPENSSL_DIR: ${{ runner.os == 'Linux' && '/usr' || '' }}
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
@@ -112,25 +116,6 @@ jobs:
           # Copy binaries with appropriate names
           cp target/${{ matrix.target }}/release/pcl pcl-$arch-$os
           cp target/${{ matrix.target }}/release/phorge phorge-$arch-$os || true
-
-          # Check library dependencies (informational)
-          if [[ "${{ runner.os }}" == "macOS" ]]; then
-            echo "Library dependencies for pcl:"
-            otool -L pcl-$arch-$os
-            
-            if [[ -f "phorge-$arch-$os" ]]; then
-              echo "Library dependencies for phorge:"
-              otool -L phorge-$arch-$os
-            fi
-          elif [[ "${{ runner.os }}" == "Linux" ]]; then
-            echo "Library dependencies for pcl:"
-            ldd pcl-$arch-$os || echo "No dynamic dependencies (static binary)"
-            
-            if [[ -f "phorge-$arch-$os" ]]; then
-              echo "Library dependencies for phorge:"
-              ldd phorge-$arch-$os || echo "No dynamic dependencies (static binary)"
-            fi
-          fi
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
