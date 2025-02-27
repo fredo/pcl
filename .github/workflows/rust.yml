@@ -92,48 +92,26 @@ jobs:
           components: rust-src
       - uses: Swatinem/rust-cache@v2
 
-      # Install dependencies for Linux builds
-      - name: Install Linux dependencies
+      # Install cross for Linux ARM builds
+      - name: Install cross
         if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
-          # Install OpenSSL development libraries for aarch64
-          sudo apt-get install -y libssl-dev pkg-config
-          # For cross-compilation
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       # Build for all targets with static linking
       - name: Build Release
         env:
-          # For aarch64 Linux cross-compilation
-          CC_aarch64_unknown_linux_gnu: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
-          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-gcc' || '' }}
-          # Force using vendored OpenSSL for Linux ARM
-          OPENSSL_STATIC: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '1' || '' }}
-          OPENSSL_NO_PKG_CONFIG: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '1' || '' }}
-          # Set RUSTFLAGS based on OS
-          RUSTFLAGS: ${{ startsWith(matrix.target, 'aarch64-unknown-linux') && '-C target-feature=+crt-static' || '' }}
+          # Static linking flags for all builds
+          RUSTFLAGS: "-C target-feature=+crt-static"
+          # For OpenSSL static linking
+          OPENSSL_STATIC: "1"
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
-          # Create a temporary Cargo config to enable vendored OpenSSL for Linux ARM
+          # Use cross for Linux ARM builds
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            mkdir -p .cargo
-            cat << 'ENDOFCONFIG' > .cargo/config.toml
-            [target.aarch64-unknown-linux-gnu]
-            linker = "aarch64-linux-gnu-gcc"
-
-            [build]
-            rustflags = ["-C", "target-feature=+crt-static"]
-
-            [dependencies]
-            openssl-sys = { version = "*", features = ["vendored"] }
-            ENDOFCONFIG
-            
-            # Build with build-std for Linux ARM
-            cargo build --release --target ${{ matrix.target }} -Z build-std
+            CROSS_CONTAINER_OPTS="--env OPENSSL_STATIC=1 --env RUSTFLAGS=-C target-feature=+crt-static" \
+            cross build --release --target ${{ matrix.target }}
           else
             # Regular build for other targets
             cargo build --release --target ${{ matrix.target }}
