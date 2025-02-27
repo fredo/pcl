@@ -116,12 +116,26 @@ jobs:
 
       # Build for all targets
       - name: Build Release
+        env:
+          # Skip building phoundry in the build script
+          PCL_SKIP_BUILD_PHOUNDRY: "true"
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
-          # Use cross for all builds
+          # Use cross to build pcl
           cross build --release --target ${{ matrix.target }}
+
+          # Use cross to build forge directly
+          cross build --release --target ${{ matrix.target }} --bin forge --manifest-path phoundry/Cargo.toml
+
+          # Extract architecture and OS from target
+          arch=$(echo ${{ matrix.target }} | cut -d'-' -f1)
+          os=$(echo ${{ matrix.target }} | cut -d'-' -f2)
+
+          # Copy binaries with appropriate names
+          cp target/${{ matrix.target }}/release/pcl pcl-$arch-$os
+          cp phoundry/target/${{ matrix.target }}/release/forge phorge-$arch-$os
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
