@@ -98,11 +98,6 @@ jobs:
 
       # Build for all targets with static linking
       - name: Build Release
-        env:
-          # Static linking flags for all builds
-          RUSTFLAGS: "-C target-feature=+crt-static"
-          # For OpenSSL static linking
-          OPENSSL_STATIC: "1"
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
