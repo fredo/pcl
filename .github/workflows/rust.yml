@@ -112,18 +112,30 @@ jobs:
           # Force using vendored OpenSSL for Linux ARM
           OPENSSL_STATIC: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '1' || '' }}
           OPENSSL_NO_PKG_CONFIG: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '1' || '' }}
-          OPENSSL_LIB_DIR: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '/usr/lib/aarch64-linux-gnu' || '' }}
-          OPENSSL_INCLUDE_DIR: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '/usr/include/aarch64-linux-gnu' || '' }}
           # Set RUSTFLAGS based on OS
           RUSTFLAGS: ${{ startsWith(matrix.target, 'aarch64-unknown-linux') && '-C target-feature=+crt-static' || '' }}
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
-          # Build with appropriate flags based on target
+          # Create a temporary Cargo config to enable vendored OpenSSL for Linux ARM
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            cargo build --release --target ${{ matrix.target }} -Z build-std --features openssl-sys/vendored
+            mkdir -p .cargo
+            cat > .cargo/config.toml << EOF
+            [target.aarch64-unknown-linux-gnu]
+            linker = "aarch64-linux-gnu-gcc"
+            
+            [build]
+            rustflags = ["-C", "target-feature=+crt-static"]
+            
+            [dependencies]
+            openssl-sys = { version = "*", features = ["vendored"] }
+            EOF
+            
+            # Build with build-std for Linux ARM
+            cargo build --release --target ${{ matrix.target }} -Z build-std
           else
+            # Regular build for other targets
             cargo build --release --target ${{ matrix.target }}
           fi
 
