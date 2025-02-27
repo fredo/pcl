@@ -106,33 +106,22 @@ jobs:
           echo '' >> Cross.toml
           echo '[target.aarch64-unknown-linux-gnu]' >> Cross.toml
           echo 'image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main"' >> Cross.toml
-          echo '' >> Cross.toml
-          echo '[build.env]' >> Cross.toml
-          echo 'passthrough = [' >> Cross.toml
-          echo '  "OPENSSL_STATIC",' >> Cross.toml
-          echo '  "OPENSSL_NO_VENDOR"' >> Cross.toml
-          echo ']' >> Cross.toml
+
+      # Create a temporary Cargo config for vendored dependencies
+      - name: Configure vendored dependencies
+        run: |
+          mkdir -p .cargo
+          echo '[dependencies.openssl-sys]' > .cargo/config.toml
+          echo 'features = ["vendored"]' >> .cargo/config.toml
 
       # Build for all targets
       - name: Build Release
-        env:
-          # For OpenSSL
-          OPENSSL_STATIC: "1"
-          OPENSSL_NO_VENDOR: "0" # This enables vendored OpenSSL
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
           # Use cross for all builds
           cross build --release --target ${{ matrix.target }}
-
-          # Extract architecture and OS from target
-          arch=$(echo ${{ matrix.target }} | cut -d'-' -f1)
-          os=$(echo ${{ matrix.target }} | cut -d'-' -f2)
-
-          # Copy binaries with appropriate names
-          cp target/${{ matrix.target }}/release/pcl pcl-$arch-$os
-          cp target/${{ matrix.target }}/release/phorge phorge-$arch-$os || true
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
