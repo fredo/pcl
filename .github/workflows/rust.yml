@@ -106,19 +106,25 @@ jobs:
           echo '' >> Cross.toml
           echo '[target.aarch64-unknown-linux-gnu]' >> Cross.toml
           echo 'image = "ghcr.io/cross-rs/aarch64-unknown-linux-gnu:main"' >> Cross.toml
+          echo '' >> Cross.toml
+          echo '[build.env]' >> Cross.toml
+          echo 'passthrough = [' >> Cross.toml
+          echo '  "OPENSSL_STATIC",' >> Cross.toml
+          echo '  "OPENSSL_NO_VENDOR"' >> Cross.toml
+          echo ']' >> Cross.toml
 
       # Build for all targets
       - name: Build Release
+        env:
+          # For OpenSSL
+          OPENSSL_STATIC: "1"
+          OPENSSL_NO_VENDOR: "0" # This enables vendored OpenSSL
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
-          # Use cross for all builds with vendored OpenSSL for Linux
-          if [[ "${{ runner.os }}" == "Linux" ]]; then
-            cross build --release --target ${{ matrix.target }} --features openssl-sys/vendored
-          else
-            cross build --release --target ${{ matrix.target }}
-          fi
+          # Use cross for all builds
+          cross build --release --target ${{ matrix.target }}
 
           # Extract architecture and OS from target
           arch=$(echo ${{ matrix.target }} | cut -d'-' -f1)
