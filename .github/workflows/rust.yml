@@ -92,9 +92,8 @@ jobs:
           components: rust-src
       - uses: Swatinem/rust-cache@v2
 
-      # Install cross for Linux ARM builds
+      # Install cross for all builds
       - name: Install cross
-        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
         run: cargo install cross
 
       # Build for all targets with static linking
@@ -108,19 +107,8 @@ jobs:
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
-          # Use cross for Linux ARM builds
-          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            # Create a simple Cargo config for cross
-            mkdir -p .cargo
-            echo '[target.aarch64-unknown-linux-gnu]' > .cargo/config.toml
-            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
-            
-            # Build with cross
-            cross build --release --target ${{ matrix.target }}
-          else
-            # Regular build for other targets
-            cargo build --release --target ${{ matrix.target }}
-          fi
+          # Use cross for all builds
+          cross build --release --target ${{ matrix.target }}
 
           # Extract architecture and OS from target
           arch=$(echo ${{ matrix.target }} | cut -d'-' -f1)
