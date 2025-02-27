@@ -121,16 +121,16 @@ jobs:
           # Create a temporary Cargo config to enable vendored OpenSSL for Linux ARM
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
             mkdir -p .cargo
-            cat > .cargo/config.toml << EOF
+            cat << 'ENDOFCONFIG' > .cargo/config.toml
             [target.aarch64-unknown-linux-gnu]
             linker = "aarch64-linux-gnu-gcc"
-            
+
             [build]
             rustflags = ["-C", "target-feature=+crt-static"]
-            
+
             [dependencies]
             openssl-sys = { version = "*", features = ["vendored"] }
-            EOF
+            ENDOFCONFIG
             
             # Build with build-std for Linux ARM
             cargo build --release --target ${{ matrix.target }} -Z build-std
