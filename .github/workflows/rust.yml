@@ -95,7 +95,7 @@ jobs:
       # Install cross for Linux ARM builds
       - name: Install cross
         if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
-        run: cargo install cross --git https://github.com/cross-rs/cross
+        run: cargo install cross
 
       # Build for all targets with static linking
       - name: Build Release
@@ -104,14 +104,18 @@ jobs:
           RUSTFLAGS: "-C target-feature=+crt-static"
           # For OpenSSL static linking
           OPENSSL_STATIC: "1"
-          # Container options for cross
-          CROSS_CONTAINER_OPTS: "--env OPENSSL_STATIC=1 --env RUSTFLAGS=-C target-feature=+crt-static"
         run: |
           # Explicitly add the target to be extra cautious
           rustup target add ${{ matrix.target }}
 
           # Use cross for Linux ARM builds
           if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            # Create a simple Cargo config for cross
+            mkdir -p .cargo
+            echo '[target.aarch64-unknown-linux-gnu]' > .cargo/config.toml
+            echo 'linker = "aarch64-linux-gnu-gcc"' >> .cargo/config.toml
+            
+            # Build with cross
             cross build --release --target ${{ matrix.target }}
           else
             # Regular build for other targets
